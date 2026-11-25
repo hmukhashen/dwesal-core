@@ -6,6 +6,7 @@ import type {
   WhatsAppOrganizationAddressExtra,
 } from "../_shared/supabase.ts";
 import { ContentfulStatusCode } from "jsr:@hono/hono/utils/http-status";
+import { functionsBaseUrl } from "../_shared/urls.ts";
 import {
   canConnect,
   heldByMeta,
@@ -16,6 +17,30 @@ import {
 const API_VERSION = "v24.0";
 const APP_ID = Deno.env.get("META_APP_ID");
 const APP_SECRET = Deno.env.get("META_APP_SECRET");
+const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN");
+
+/**
+ * Where a WABA's webhooks go when the caller names no callback of its own:
+ * this deployment's whatsapp-webhook, as a per-WABA override. Without it the
+ * WABA would use the app-level callback, which on an app shared with another
+ * system (DWESAL's Meta app also serves the older Wesal) belongs to that
+ * system. Null when the override cannot be built (no verify token, or a
+ * functions URL Meta cannot call).
+ */
+export function selfWebhookOverride(
+  app_id: string,
+  multipleApps: boolean,
+): { url: string; token: string } | null {
+  const base = functionsBaseUrl();
+
+  if (!VERIFY_TOKEN || !base.startsWith("https://")) return null;
+
+  const url = `${base}/whatsapp-webhook${
+    multipleApps ? `?app_id=${encodeURIComponent(app_id)}` : ""
+  }`;
+
+  return { url, token: VERIFY_TOKEN };
+}
 
 /** Normalize phone number to digits only (e.g., "+54 9 260 423 7115" -> "5492604237115") */
 function normalizePhoneNumber(phone: string): string {
@@ -309,6 +334,19 @@ export async function performEmbeddedSignup(
   const app_id = ids[idIndex];
   const app_secret = secrets[idIndex];
 
+  // Checked before anything changes at Meta: subscribing without an override
+  // would send the WABA's traffic to the app-level callback.
+  const override = payload.callback_url && payload.verify_token
+    ? { url: payload.callback_url, token: payload.verify_token }
+    : selfWebhookOverride(app_id, ids.length > 1);
+
+  if (!override) {
+    throw new HTTPException(500, {
+      message:
+        "WHATSAPP_VERIFY_TOKEN is not set or SUPABASE_URL is not https: the WABA's webhooks cannot be pointed at this deployment",
+    });
+  }
+
   // Attached to every step log so concurrent onboardings can be told apart in
   // stdout.
   const ctx = {
@@ -380,8 +418,8 @@ export async function performEmbeddedSignup(
   await postSubscribeToWebhooks(
     business_access_token,
     payload.waba_id,
-    payload.callback_url,
-    payload.verify_token,
+    override.url,
+    override.token,
   );
 
   if (payload.flow_type === "existing_phone_number") {
