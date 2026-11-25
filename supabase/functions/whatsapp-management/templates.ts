@@ -35,7 +35,14 @@ async function getBusinessCredentials(
     });
   }
 
-  return data;
+  // A number registered by hand (README, "For any number you add") carries
+  // no token of its own; fall back to the system user's, as the dispatcher
+  // does when sending.
+  return {
+    waba_id: data.waba_id,
+    access_token: data.access_token ||
+      Deno.env.get("META_SYSTEM_USER_ACCESS_TOKEN") || "",
+  };
 }
 
 export async function listTemplates(
