@@ -160,3 +160,14 @@ here with why, so it can be dropped once upstream has an equivalent.
   (non-concurrent) create is safe now.
 - Upstream candidate: maybe; any integration listing incoming messages per
   organization benefits.
+
+## Deleting one language of a template
+
+- File: `supabase/functions/whatsapp-management/templates.ts`
+  (`deleteTemplate`).
+- Change: when the DELETE body's `template.id` is set, the call to Meta adds
+  `hsm_id`, so only that language is deleted; without it the name alone still
+  deletes every language. The name is URL-encoded.
+- Why: DWESAL deletes one template (name + language) at a time; by name alone
+  the other languages of the same name were deleted at Meta too.
+- Upstream candidate: yes.

@@ -237,7 +237,11 @@ export async function deleteTemplate(
   );
 
   const response = await fetch(
-    `https://graph.facebook.com/${API_VERSION}/${waba_id}/message_templates?name=${template.name}`,
+    // With the template id (hsm_id) Meta deletes only that language; by name
+    // alone every language of the name goes.
+    `https://graph.facebook.com/${API_VERSION}/${waba_id}/message_templates?name=${
+      encodeURIComponent(template.name)
+    }${template.id ? `&hsm_id=${encodeURIComponent(template.id)}` : ""}`,
     {
       method: "DELETE",
       headers: {
