@@ -283,8 +283,62 @@ export type WebhookValueUserIdUpdate = {
   user_id_update: WebhookUserIdUpdate[];
 };
 
+// Value type for user_preferences webhooks: a user stopped or resumed
+// marketing messages from the business (Meta's own opt-out).
+export type WebhookValueUserPreferences = {
+  messaging_product: "whatsapp";
+  metadata: WebhookMetadata;
+  contacts?: WebhookContact[];
+  user_preferences: {
+    wa_id?: string;
+    user_id?: string;
+    detail?: string;
+    category: string; // "marketing_messages"
+    value: string; // "stop" | "resume"
+    timestamp: number | string;
+  }[];
+};
+
+// WABA-level events stored as logs rows for the organizations' webhooks
+// (whatsapp-webhook/forward_events.ts). Only the keys read here are typed.
+export type WebhookValueWabaEvent = {
+  event?: string;
+  display_phone_number?: string;
+  current_limit?: string;
+  old_limit?: string;
+  requested_verified_name?: string;
+  decision?: string;
+  message_template_id?: number | string;
+  message_template_name?: string;
+  message_template_language?: string;
+  reason?: string | null;
+  previous_quality_score?: string;
+  new_quality_score?: string;
+  previous_category?: string;
+  new_category?: string;
+  correct_category?: string;
+};
+
+export const FORWARDED_WABA_FIELDS = [
+  "phone_number_quality_update",
+  "phone_number_name_update",
+  "message_template_status_update",
+  "message_template_quality_update",
+  "template_category_update",
+] as const;
+
+export type ForwardedWabaField = (typeof FORWARDED_WABA_FIELDS)[number];
+
 // Change object that discriminates based on field value
 export type WebhookChange =
+  | {
+    field: "user_preferences";
+    value: WebhookValueUserPreferences;
+  }
+  | {
+    field: ForwardedWabaField;
+    value: WebhookValueWabaEvent;
+  }
   | {
     field: "messages";
     value:

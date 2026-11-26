@@ -5,8 +5,10 @@ import { HTTPException } from "jsr:@hono/hono/http-exception";
 import { ContentfulStatusCode } from "jsr:@hono/hono/utils/http-status";
 
 const API_VERSION = "v24.0";
+const TEMPLATE_PAGE_SIZE = 100;
+const MAX_TEMPLATE_PAGES = 20;
 
-async function getBusinessCredentials(
+export async function getBusinessCredentials(
   client: SupabaseClient<Database>,
   organization_id: string,
   organization_address: string,
@@ -56,23 +58,36 @@ export async function listTemplates(
     organization_address,
   );
 
-  // Meta answers with the edge envelope, { data, paging }.
-  const response = await fetch(
-    `https://graph.facebook.com/${API_VERSION}/${waba_id}/message_templates`,
-    {
+  // Meta answers with the edge envelope, { data, paging }; every page is
+  // followed (up to MAX_TEMPLATE_PAGES) so a WABA with many templates is
+  // listed whole. `paging` is passed on only when pages were left unread.
+  const data: TemplateData[] = [];
+  let url: string | null =
+    `https://graph.facebook.com/${API_VERSION}/${waba_id}/message_templates?limit=${TEMPLATE_PAGE_SIZE}`;
+  let paging: { next?: string } | undefined;
+  for (let page = 0; url && page < MAX_TEMPLATE_PAGES; page++) {
+    const response: Response = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${access_token}` },
-    },
-  );
-
-  if (!response.ok) {
-    throw new HTTPException(response.status as ContentfulStatusCode, {
-      message: "Could not fetch templates",
-      cause: await response.json().catch(() => ({})),
     });
+
+    if (!response.ok) {
+      throw new HTTPException(response.status as ContentfulStatusCode, {
+        message: "Could not fetch templates",
+        cause: await response.json().catch(() => ({})),
+      });
+    }
+
+    const body = await response.json() as {
+      data?: TemplateData[];
+      paging?: { next?: string };
+    };
+    data.push(...(body.data ?? []));
+    paging = body.paging;
+    url = body.paging?.next ?? null;
   }
 
-  return await response.json();
+  return url ? { data, paging } : { data };
 }
 
 export async function fetchTemplate(

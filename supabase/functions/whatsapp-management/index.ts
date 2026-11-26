@@ -18,6 +18,7 @@ import {
   fetchTemplate,
   listTemplates,
 } from "./templates.ts";
+import { fetchNumberHealth } from "./numbers.ts";
 import {
   deleteSignup,
   performEmbeddedSignup,
@@ -222,6 +223,25 @@ app.delete(
     );
 
     return c.json(response);
+  },
+);
+
+// Number health: Meta's quality rating, messaging limit tier and verified
+// name of one of the organization's numbers (read-only). RLS on the key's
+// client keeps it to the organization's own addresses.
+app.put(
+  "/whatsapp-management/number",
+  requireRoles(["member", "admin", "owner"]),
+  async (c) => {
+    const { organization_id, organization_address } = await c.req.json<
+      { organization_id: string; organization_address: string }
+    >();
+
+    const client = c.get("supabase");
+
+    return c.json(
+      await fetchNumberHealth(client, organization_id, organization_address),
+    );
   },
 );
 

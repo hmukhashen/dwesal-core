@@ -26,6 +26,8 @@ import {
 } from "../_shared/media.ts";
 import { whatsappToMarkdown } from "../_shared/markdown.ts";
 import { handleAccountUpdate } from "./account_update.ts";
+import { forwardUserPreferences, forwardWabaEvent } from "./forward_events.ts";
+import { FORWARDED_WABA_FIELDS } from "../_shared/types/whatsapp_webhook_payload_types.ts";
 
 const API_VERSION = "v24.0";
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN");
@@ -601,6 +603,36 @@ async function processMessage(request: Request): Promise<Response> {
             count,
           });
         }
+        continue;
+      }
+
+      // Number quality/name and template events: forwarded to the
+      // organizations' webhooks as logs rows (forward_events.ts).
+      if ((FORWARDED_WABA_FIELDS as readonly string[]).includes(field)) {
+        await forwardWabaEvent(
+          client,
+          waba_id,
+          field as (typeof FORWARDED_WABA_FIELDS)[number],
+          value as Parameters<typeof forwardWabaEvent>[3],
+        );
+        continue;
+      }
+
+      if (field === "user_preferences") {
+        const org = orgAddressMap.get(value.metadata.phone_number_id);
+        if (!org) {
+          log.warn("user_preferences: no organization for phone number", {
+            phone_number_id: value.metadata.phone_number_id,
+          });
+          continue;
+        }
+        await forwardUserPreferences(
+          client,
+          waba_id,
+          org.organization_id,
+          org.address,
+          value,
+        );
         continue;
       }
 
