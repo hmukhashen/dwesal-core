@@ -171,3 +171,14 @@ here with why, so it can be dropped once upstream has an equivalent.
 - Why: DWESAL deletes one template (name + language) at a time; by name alone
   the other languages of the same name were deleted at Meta too.
 - Upstream candidate: yes.
+
+## Account alerts reach the organization's webhooks
+
+- File: `supabase/functions/_shared/types/whatsapp_webhook_payload_types.ts`
+  (`FORWARDED_WABA_FIELDS`, `WebhookValueWabaEvent`).
+- Change: `account_alerts`, `account_review_update`,
+  `business_capability_update` and `security` join the forwarded fields, so
+  they become `logs` rows like the number and template events.
+- Why: DWESAL shows them in its Meta alerts screen and notifies the office
+  managers (old Wesal did); the Meta app must subscribe these fields.
+- Upstream candidate: yes, with the other forwarded fields.

@@ -303,6 +303,16 @@ export type WebhookValueUserPreferences = {
 // (whatsapp-webhook/forward_events.ts). Only the keys read here are typed.
 export type WebhookValueWabaEvent = {
   event?: string;
+  entity_type?: string;
+  entity_id?: string | number;
+  alert_info?: {
+    alert_severity?: string;
+    alert_status?: string;
+    alert_type?: string;
+    alert_description?: string;
+  };
+  max_daily_conversation_per_phone?: number;
+  max_phone_numbers_per_business?: number;
   display_phone_number?: string;
   current_limit?: string;
   old_limit?: string;
@@ -325,6 +335,13 @@ export const FORWARDED_WABA_FIELDS = [
   "message_template_status_update",
   "message_template_quality_update",
   "template_category_update",
+  // Account-level notices Meta sends to the WABA: messaging limit increase
+  // failed/deferred, business verification, OBA, profile picture, review,
+  // capability changes and security (2FA/PIN) events.
+  "account_alerts",
+  "account_review_update",
+  "business_capability_update",
+  "security",
 ] as const;
 
 export type ForwardedWabaField = (typeof FORWARDED_WABA_FIELDS)[number];
