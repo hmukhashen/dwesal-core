@@ -19,6 +19,7 @@ import {
   listTemplates,
 } from "./templates.ts";
 import { fetchNumberHealth } from "./numbers.ts";
+import type { HeaderSample } from "./header_sample.ts";
 import {
   deleteSignup,
   performEmbeddedSignup,
@@ -37,6 +38,8 @@ type TemplatePayload = {
   organization_id: string;
   organization_address: string;
   template?: TemplateData;
+  // Media header sample for Meta's review (POST and PATCH).
+  header_sample?: HeaderSample;
 };
 
 type AppEnv = ManagementEnv;
@@ -170,8 +173,8 @@ app.post(
   "/whatsapp-management/templates",
   requireRoles(["admin", "owner"]),
   async (c) => {
-    const { organization_id, organization_address, template } = await c.req
-      .json<TemplatePayload>();
+    const { organization_id, organization_address, template, header_sample } =
+      await c.req.json<TemplatePayload>();
 
     const client = c.get("supabase");
 
@@ -180,6 +183,7 @@ app.post(
       organization_id,
       organization_address,
       template!,
+      header_sample,
     );
 
     return c.json(response);
@@ -190,8 +194,8 @@ app.patch(
   "/whatsapp-management/templates",
   requireRoles(["admin", "owner"]),
   async (c) => {
-    const { organization_id, organization_address, template } = await c.req
-      .json<TemplatePayload>();
+    const { organization_id, organization_address, template, header_sample } =
+      await c.req.json<TemplatePayload>();
 
     const client = c.get("supabase");
 
@@ -200,6 +204,7 @@ app.patch(
       organization_id,
       organization_address,
       template!,
+      header_sample,
     );
 
     return c.json(response);

@@ -53,9 +53,9 @@ here with why, so it can be dropped once upstream has an equivalent.
     `message_template_status_update`, `message_template_quality_update`,
     `template_category_update`: one row per organization holding the WABA
     (connected accounts, else the last one), with `organization_address` when
-    the event's `display_phone_number` matches one of its accounts.
-  No schema change: the existing `z_notify_webhook_logs` trigger sends each
-  row to the organization's webhooks on `logs` insert.
+    the event's `display_phone_number` matches one of its accounts. No schema
+    change: the existing `z_notify_webhook_logs` trigger sends each row to the
+    organization's webhooks on `logs` insert.
 - Why: DWESAL opts contacts out on Meta's marketing stop, slows down or pauses
   campaigns when a number's quality drops, and updates template status without
   waiting for its 30-minute poll. Meta only sends these fields when they are
@@ -76,15 +76,37 @@ here with why, so it can be dropped once upstream has an equivalent.
 ## Number health read: `PUT /whatsapp-management/number`
 
 - Files: `supabase/functions/whatsapp-management/numbers.ts` (new),
-  `supabase/functions/whatsapp-management/index.ts` (route),
-  `templates.ts` (`getBusinessCredentials` exported).
+  `supabase/functions/whatsapp-management/index.ts` (route), `templates.ts`
+  (`getBusinessCredentials` exported).
 - Change: `PUT /whatsapp-management/number` with
-  `{ organization_id, organization_address }` (key role member or above)
-  returns Meta's `verified_name`, `display_phone_number`, `quality_rating`,
+  `{ organization_id, organization_address }` (key role member or above) returns
+  Meta's `verified_name`, `display_phone_number`, `quality_rating`,
   `messaging_limit_tier`, `throughput`, `name_status`, `status` for that number,
   read with the number's token or `META_SYSTEM_USER_ACCESS_TOKEN`; a 400 from
   Meta retries with the basic fields only. RLS on the key's client limits it to
   the organization's own addresses; a disconnected account answers 409.
-- Why: the core does not store tier or quality; DWESAL polls them (every 6 h
-  and after a quality or name event) to slow down or pause campaigns.
+- Why: the core does not store tier or quality; DWESAL polls them (every 6 h and
+  after a quality or name event) to slow down or pause campaigns.
+- Upstream candidate: yes.
+
+## Template media headers take a sample file: `header_sample`
+
+- Files: `supabase/functions/whatsapp-management/header_sample.ts` (new),
+  `templates.ts` (`createTemplate`, `editTemplate`), `index.ts` (POST and PATCH
+  `/whatsapp-management/templates` read `header_sample`).
+- Change: the body may carry
+  `header_sample: { url | base64, mime_type, file_name? }` (jpeg/png ≤5 MB, mp4
+  ≤16 MB, pdf ≤16 MB; base64 ≤5 MB). When the template's HEADER is IMAGE, VIDEO
+  or DOCUMENT, the core downloads the sample (https only, no literal private or
+  internal hosts, no redirects, 20 s timeout, size capped while streaming),
+  opens a Meta Resumable Upload session on the first `META_APP_ID` with the
+  number's token (or the system user's), uploads the bytes (60 s timeouts) and
+  sets the HEADER's `example` to `{ header_handle: [handle] }` before creating
+  or editing the template. A sample that does not fit the header format answers
+  400; a failed download 422/413; Meta's refusals pass through with Meta's error
+  as `cause`. Without `header_sample` nothing changes. Tokens are never logged
+  or returned.
+- Why: Meta rejects media-header templates without a sample handle, and the
+  handle needs the app ID and a token that only the core holds. DWESAL sends a
+  15-minute signed storage link.
 - Upstream candidate: yes.

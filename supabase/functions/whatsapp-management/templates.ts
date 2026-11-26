@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import * as log from "../_shared/logger.ts";
 import { HTTPException } from "jsr:@hono/hono/http-exception";
 import { ContentfulStatusCode } from "jsr:@hono/hono/utils/http-status";
+import { applyHeaderSample, type HeaderSample } from "./header_sample.ts";
 
 const API_VERSION = "v24.0";
 const TEMPLATE_PAGE_SIZE = 100;
@@ -125,6 +126,7 @@ export async function createTemplate(
   organization_id: string,
   organization_address: string,
   template: TemplateData,
+  header_sample?: HeaderSample,
 ): Promise<{
   id: string;
   status: string;
@@ -136,7 +138,14 @@ export async function createTemplate(
     organization_address,
   );
 
-  const { name, category, language, components } = template;
+  const { name, category, language } = template;
+  // A media header needs a sample at Meta (example.header_handle), uploaded
+  // here with the same token, so callers send the file instead of a handle.
+  const components = await applyHeaderSample(
+    template.components,
+    header_sample,
+    access_token,
+  );
 
   const filteredTemplate = {
     name,
@@ -173,6 +182,7 @@ export async function editTemplate(
   organization_id: string,
   organization_address: string,
   template: TemplateData,
+  header_sample?: HeaderSample,
 ): Promise<{
   success: boolean;
 }> {
@@ -182,7 +192,12 @@ export async function editTemplate(
     organization_address,
   );
 
-  const { category, components } = template;
+  const { category } = template;
+  const components = await applyHeaderSample(
+    template.components,
+    header_sample,
+    access_token,
+  );
   const filteredTemplate = { category, components };
 
   const response = await fetch(
