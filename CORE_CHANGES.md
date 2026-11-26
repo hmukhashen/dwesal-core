@@ -141,3 +141,22 @@ here with why, so it can be dropped once upstream has an equivalent.
   window (131047), as it does free text.
 - Upstream candidate: yes; it is the outgoing half of a message kind the core
   already reads.
+
+## Index for an organization's incoming messages by time
+
+- Files: `supabase/schemas/03_models/03-05_messages.sql`,
+  `supabase/migrations/20261126120000_messages_inbound_log_index.sql`.
+- Change: partial index `messages_org_inbound_timestamp_idx` on
+  `(organization_id, timestamp desc) where sender_address is not null`.
+- Why: DWESAL's inbound message log reads an organization's customer messages
+  newest first across conversations. `messages_org_conv_timestamp_idx` orders by
+  time only within one conversation, so for a large organization the log would
+  scan and sort. Partial, so outgoing campaign rows (most of the table) never
+  enter it.
+- Migration: written by hand because `supabase db diff` needs a Docker daemon
+  the authoring session did not have; it is the single statement `db diff` emits
+  for this schema change. Checked with `explain` on Postgres 16 (index scan, no
+  sort of the organization's rows). The table is empty in production, so a plain
+  (non-concurrent) create is safe now.
+- Upstream candidate: maybe; any integration listing incoming messages per
+  organization benefits.

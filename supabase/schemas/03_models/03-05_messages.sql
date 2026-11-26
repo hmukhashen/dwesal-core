@@ -102,6 +102,17 @@ create index messages_org_conv_timestamp_idx
 on public.messages
 using btree (organization_id, conversation_id, timestamp desc);
 
+-- An organization's incoming messages, newest first, across conversations:
+-- DWESAL's inbound log (organization_id = X, sender_address is not null,
+-- order by timestamp desc, keyset on timestamp). The index above leads with
+-- conversation_id after the organization, so it cannot order a whole
+-- organization by time. Partial: outgoing rows (campaigns, the bulk of the
+-- table) never enter it.
+create index messages_org_inbound_timestamp_idx
+on public.messages
+using btree (organization_id, timestamp desc)
+where sender_address is not null;
+
 -- Media-object → referencing-message lookup (is_media_visible, used by the
 -- storage.objects download policy). v1 file parts only: v0 legacy media is
 -- not matched, so it stays org-scoped like any unreferenced object.
