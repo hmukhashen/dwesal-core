@@ -9,6 +9,7 @@ import type {
   WhatsAppReferral,
 } from "./whatsapp_webhook_message_types.ts";
 import type { Template } from "./whatsapp_template_types.ts";
+import type { OutgoingInteractive } from "./whatsapp_endpoint_types.ts";
 import type { InstagramReferral } from "./instagram_webhook_payload_types.ts";
 
 //===================================
@@ -204,6 +205,14 @@ type InteractivePart = DataPart<
 
 type ButtonPart = DataPart<"button", ButtonMessage["button"]>;
 
+/**
+ * An interactive message a business sends: reply buttons, a list or a
+ * call-to-action URL button, `data` in the Cloud API's `interactive` shape
+ * (checked by whatsapp-dispatcher/interactive.ts). The customer's choice comes
+ * back as an incoming InteractivePart.
+ */
+type OutgoingInteractivePart = DataPart<"interactive", OutgoingInteractive>;
+
 type TemplatePart = DataPart<"template", Template>;
 
 /**
@@ -385,6 +394,7 @@ export type OutgoingMessage =
     | ContactsPart
     | LocationPart
     | TemplatePart
+    | OutgoingInteractivePart
     | ReactionPart
     | SharePart
     | CommentPart

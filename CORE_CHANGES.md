@@ -110,3 +110,32 @@ here with why, so it can be dropped once upstream has an equivalent.
   handle needs the app ID and a token that only the core holds. DWESAL sends a
   15-minute signed storage link.
 - Upstream candidate: yes.
+
+## The WhatsApp dispatcher sends interactive messages
+
+- Files: `supabase/functions/whatsapp-dispatcher/interactive.ts` (new,
+  `toInteractive`, with `interactive_test.ts`),
+  `supabase/functions/whatsapp-dispatcher/index.ts` (case `interactive` in
+  `outgoingMessageToEndpointMessage`),
+  `supabase/functions/_shared/types/whatsapp_endpoint_types.ts`
+  (`OutgoingInteractive`, `OutgoingInteractiveMessage`),
+  `supabase/functions/_shared/types/message_types.ts`
+  (`OutgoingInteractivePart` in `OutgoingMessage`).
+- Change: a business row with `content: { version: "1", type: "data", kind:
+  "interactive", data }` is sent as Meta's `type: "interactive"` message, `data`
+  in the Cloud API's `interactive` shape: reply buttons (`button`, 1-3 buttons,
+  title ≤20, unique ids), a list (`list`, button label ≤20, ≤10 sections and ≤10
+  rows in all, row title ≤24, description ≤72, unique ids, section titles
+  required when there are several) or a call-to-action URL button (`cta_url`).
+  Optional text header (≤60) and footer (≤60), body ≤1024. A row that breaks a
+  limit fails permanently with the reason in `status.errors` instead of
+  reaching Meta. No schema change: `messages_content_schema` already accepts
+  `type data` with any kind. The customer's answer already arrives as an
+  incoming `interactive` row (`button_reply` / `list_reply`).
+- Why: DWESAL's button chatbot sends its menus as reply buttons and lists
+  (`CHATBOT_INTERACTIVE=true` on DWESAL's worker once this is deployed); before
+  this the dispatcher threw "Cannot convert outgoing message" for them.
+  Interactive messages are session messages: Meta refuses them outside the 24 h
+  window (131047), as it does free text.
+- Upstream candidate: yes; it is the outgoing half of a message kind the core
+  already reads.

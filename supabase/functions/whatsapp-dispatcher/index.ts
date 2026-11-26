@@ -16,6 +16,7 @@ import { commitDispatchedMessage } from "../_shared/dispatch.ts";
 import { Json } from "../_shared/db_types.ts";
 import type { OrganizationAddressIssue } from "../_shared/types/extra_types.ts";
 import { markdownToWhatsApp } from "../_shared/markdown.ts";
+import { toInteractive } from "./interactive.ts";
 
 const API_VERSION = "v24.0";
 const DEFAULT_ACCESS_TOKEN = Deno.env.get("META_SYSTEM_USER_ACCESS_TOKEN") ||
@@ -357,6 +358,14 @@ function outgoingMessageToEndpointMessage({
         ...baseMessage,
         type: "template",
         template: content.data,
+      };
+    }
+    case "interactive": {
+      // Checked here: a shape Meta would refuse fails with the reason.
+      return {
+        ...baseMessage,
+        type: "interactive",
+        interactive: toInteractive(content.data),
       };
     }
     default: {

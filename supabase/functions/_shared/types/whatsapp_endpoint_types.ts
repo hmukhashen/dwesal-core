@@ -60,6 +60,48 @@ export type OutgoingSticker = {
   sticker: { id: string } | { link: string };
 };
 
+// Interactive messages a business sends (the customer's answer comes back as
+// an incoming `interactive` button_reply / list_reply).
+type InteractiveText = { text: string };
+type InteractiveCommon = {
+  header?: { type: "text"; text: string };
+  body: InteractiveText;
+  footer?: InteractiveText;
+};
+
+export type OutgoingInteractive =
+  & InteractiveCommon
+  & (
+    | {
+      type: "button";
+      action: {
+        buttons: { type: "reply"; reply: { id: string; title: string } }[];
+      };
+    }
+    | {
+      type: "list";
+      action: {
+        button: string;
+        sections: {
+          title?: string;
+          rows: { id: string; title: string; description?: string }[];
+        }[];
+      };
+    }
+    | {
+      type: "cta_url";
+      action: {
+        name: "cta_url";
+        parameters: { display_text: string; url: string };
+      };
+    }
+  );
+
+export type OutgoingInteractiveMessage = {
+  type: "interactive";
+  interactive: OutgoingInteractive;
+};
+
 //===================================
 // Endpoint message, as sent to the WhatsApp endpoint
 //===================================
@@ -80,6 +122,7 @@ export type EndpointMessage =
     | ContactsMessage
     | OutgoingDocument
     | OutgoingImage
+    | OutgoingInteractiveMessage
     | LocationMessage
     | OutgoingReaction
     | OutgoingSticker
